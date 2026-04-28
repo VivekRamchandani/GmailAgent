@@ -105,18 +105,33 @@ class MessageManager():
     def __init__(self):
         self.service = get_service()
 
-    def list_messages(self, maxResults: int, labelIds: list):
+    def list_messages(self, maxResults: int = 100, labelIds: list | None = None):
         """Fetch Messages from Gmail
+
+        Arg:
+            maxResults (int): Max number of messages to return
+            labelIds (list): Only returns messages that match the labelIds passed
+
+        
+        Return:
+            list: Return list of messages in dictionary format.
         """
+
+        kwargs = {
+            "userId": "me",
+            "maxResults": maxResults
+        }
+        if labelIds:
+            kwargs["labelIds"] = labelIds
 
         result = (
             self.service.users()
             .messages()
-            .list(userId="me", labelIds=labelIds, maxResults=maxResults)
+            .list(**kwargs)
             .execute()
         )
 
-        return result["messages"]
+        return [MessageInfo.from_dict(message) for message in result["messages"]]
     
     def get_message(self, messageId: str):
         """Get full detail of a Message
