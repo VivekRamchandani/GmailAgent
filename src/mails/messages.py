@@ -49,8 +49,18 @@ class Message():
     def get_content(self):
         return self.payload.get_content()
 
-    def get_attachment(self, attachmentId):
-        pass
+    def get_attachment(self, attachmentId) -> bytes:
+        service = get_service()
+        result = (
+            service.users()
+            .messages()
+            .attachments()
+            .get(userId="me", messageId=self.id, id=attachmentId)
+            .execute() 
+        )
+
+        data = result["data"]
+        return base64.urlsafe_b64decode(data)
 
     @staticmethod
     def from_dict(obj: dict):
