@@ -9,7 +9,7 @@ from .messages import Draft, MessageInfo
 import base64
 import json
 
-class DraftManager():
+class DraftService():
     """Class to Manage Gmail Drafts.
     """
     def __init__(self):
@@ -78,7 +78,7 @@ class DraftManager():
 
         return drafts
 
-class LabelManager():
+class LabelService():
     """Manage your Gmail Labels
     """
     
@@ -98,14 +98,14 @@ class LabelManager():
 
         return result["labels"]
 
-class MessageManager():
+class MessageService():
     """Manage your Gmail Messages
     """
 
     def __init__(self):
         self.service = get_service()
 
-    def list_messages(self, maxResults: int = 100, labelIds: list | None = None):
+    def list_messages(self, maxResults: int = 100, labelIds: list | None = None) -> list[MessageInfo]:
         """Fetch Messages from Gmail
 
         Arg:
@@ -114,7 +114,7 @@ class MessageManager():
 
         
         Return:
-            list: Return list of messages in dictionary format.
+            list: Return list of `MessageInfo`.
         """
 
         kwargs = {
@@ -132,16 +132,3 @@ class MessageManager():
         )
 
         return [MessageInfo.from_dict(message) for message in result["messages"]]
-    
-    def get_message(self, messageId: str):
-        """Get full detail of a Message
-        """
-
-        result = (
-            self.service.users()
-            .messages()
-            .get(userId="me", id=messageId, format="full")
-            .execute()
-        )
-
-        return result
