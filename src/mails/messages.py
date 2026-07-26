@@ -109,12 +109,10 @@ class Message():
                     rawPart = { 
                         "partId": part["partId"], 
                         "mimeType": part["mimeType"] 
-                    } 
-                    if part["mimeType"] == "multipart/alternative":
+                    }
+                    mimeType, _ = part["mimeType"].split("/")
+                    if mimeType == "multipart":
                         queue.extend(part["parts"])
-                    elif part["mimeType"] == "text/plain":
-                        self.content = part["body"]["data"]
-                        rawPart["body"] = part["body"]
                     elif part["body"].get("attachmentId", None):
                         rawPart["body"] = part["body"]
                         attachment = {
@@ -122,7 +120,11 @@ class Message():
                             "filename": part["filename"],
                             "size": part["body"]["size"]
                         }
-                        self.attachments.append(attachment)                  
+                        self.attachments.append(attachment)
+                    elif part["mimeType"] == "text/plain":
+                        print(part)
+                        self.content = part["body"]["data"]
+                        rawPart["body"] = part["body"]                  
 
                     self.rawParts[part["partId"]] = rawPart
             else:
@@ -141,7 +143,7 @@ class Message():
 
         @staticmethod
         def from_dict(obj: dict):
-            if obj["mimeType"] == "multipart/alternative":
-                return Message.Payload(obj["mimeType"], obj["headers"], obj["body"], obj["parts"])
-            else:
+            if obj["body"]["size"]:
                 return Message.Payload(obj["mimeType"], obj["headers"], obj["body"])
+            else:
+                return Message.Payload(obj["mimeType"], obj["headers"], obj["body"], obj["parts"])
