@@ -13,6 +13,11 @@ class MessageInfo():
         return MessageInfo(obj["id"], obj["threadId"])
     
     def get_full_message(self):
+        """Fetch full message content
+
+        Returns:
+            mails.Message: object containing full content of messsage
+        """
         service = get_service()
 
         msg = (
@@ -37,7 +42,7 @@ class Draft():
 
 
 class Message():
-    """
+    """Class representing complete Message
     """
 
     def __init__(self, messageId, threadId, labelIds, payload: dict):
@@ -46,10 +51,23 @@ class Message():
         self.labelIds = labelIds
         self.payload = self.Payload.from_dict(payload)
 
-    def get_content(self):
+    def get_content(self) -> str:
+        """Fetches message content in plain text.
+
+        Returns:
+            str: Message content in plain text. 
+        """
         return self.payload.get_content()
 
-    def get_attachment(self, attachmentId) -> bytes:
+    def get_attachment(self, attachmentId: str) -> bytes:
+        """Fetches raw binary content of an attachment (file)
+
+        Args:
+            attachmentId (str): Attachment ID
+
+        Returns:
+            bytes: File content in binary
+        """
         service = get_service()
         result = (
             service.users()
