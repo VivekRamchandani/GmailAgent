@@ -15,10 +15,12 @@ class DraftService():
     def __init__(self):
         self.service: Resource = get_service()
 
-    def create_draft(self, content: str):
+    def create_draft(self, to_: str, subject: str, content: str) -> Draft:
         """Create Draft
 
         Args:
+            to_ (str): Send to
+            subject (str): subject of draft
             content (str): content to add into Draft
         """
 
@@ -29,9 +31,9 @@ class DraftService():
         message.set_content(content)
 
         # Message Information
-        message["To"] = "vivekramchandanihvj@gmail.com"
-        message["From"] = "vivekramchandanihvj@gmail.com"
-        message["Subject"] = "Automated Draft"
+        message["To"] = to_
+        message["From"] = "me"
+        message["Subject"] = subject
 
         # print(message.as_string())
 
@@ -48,8 +50,7 @@ class DraftService():
             .execute()
         )
 
-        print(type(draft))
-        print(draft)
+        return Draft.from_dict(draft)
 
     def list_drafts(self, max: int | None = None) -> list[Draft]:
         """List all the Drafts
@@ -58,7 +59,7 @@ class DraftService():
             max (int): Max number of results to return.
 
         Returns:
-            drafts (list[Draft]): List of Drafts
+            drafts (list[Draft]): List of Drafts object
         """
 
         kwargs = {
@@ -108,12 +109,12 @@ class MessageService():
     def list_messages(self, maxResults: int = 100, labelIds: list | None = None) -> list[MessageInfo]:
         """Fetch Messages from Gmail
 
-        Arg:
+        Args:
             maxResults (int): Max number of messages to return
             labelIds (list): Only returns messages that match the labelIds passed
 
         
-        Return:
+        Returns:
             list: Return list of `MessageInfo`.
         """
 
@@ -132,3 +133,26 @@ class MessageService():
         )
 
         return [MessageInfo.from_dict(message) for message in result["messages"]]
+
+    def send_message(self, to_: str, subject: str, content: str) -> MessageInfo:
+        message = EmailMessage()
+        message.set_content(content)
+    
+        message["To"] = to_
+        message["From"] = "me"
+        message["Subject"] = subject
+    
+    
+        # Encode message 
+        encoded_messsage = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    
+        created_message = {"raw": encoded_messsage}
+    
+        sent_message = (
+            get_service().users()
+            .messages()
+            .send(userId="me", body=created_message)
+            .execute()
+        )
+    
+        return MessageInfo.from_dict(sent_message)
