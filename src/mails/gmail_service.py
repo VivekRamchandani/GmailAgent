@@ -9,6 +9,8 @@ from .messages import Draft, MessageInfo
 import base64
 import json
 
+from typing import Literal
+
 class DraftService():
     """Class to Manage Gmail Drafts.
     """
@@ -35,11 +37,8 @@ class DraftService():
         message["From"] = "me"
         message["Subject"] = subject
 
-        # print(message.as_string())
-
         # Encode Message
         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        # print(encoded_message)
 
         create_message = {"message": {"raw": encoded_message} }
 
@@ -86,8 +85,11 @@ class LabelService():
     def __init__(self):
         self.service = get_service()
 
-    def list_labels(self):
+    def list_labels(self) -> list[dict]:
         """List all Labels.
+
+        Returns:
+            list[dict]: list of labels
         """
 
         result = (
@@ -99,6 +101,55 @@ class LabelService():
 
         return result["labels"]
 
+
+    def create_label(
+        self, 
+        name: str, 
+        labelVisibility: Literal["labelShow", "labelShowIfUnread", "labelHide"], 
+        messageListVisibility: Literal["show", "hide"]
+    ) -> dict:
+        """Create a new label
+
+        Args:
+            name (str): name of the label
+            labelVisibility (Literal): Any one of the values "labelShow", "labelShowIfUnread" or "labelHide".
+                For setting visibility of label in Gmail web interface.
+            messageListVisibility (Literal): Either "show" or "hide".
+                Whether to show messages with this label in the message list in the Gmail web interface.
+
+        Returns:
+            dict: Response of the request
+        """
+        label = {
+            "labelListVisibility": labelVisibility,
+            "messageListVisibility": messageListVisibility,
+            "name": name
+        }
+
+        result = (
+            self.service.users()
+            .labels()
+            .create(userId="me", body=label)
+            .execute()
+        )
+
+        return result
+
+    def delete_label(self, labelId: str):
+        """Delete a label
+        
+        Args:
+            labelId (str): Label Id for deleting
+        """
+
+        (
+            self.service.users()
+            .labels()
+            .delete(userId="me", id=labelId)
+            .execute()
+        )
+
+
 class MessageService():
     """Manage your Gmail Messages
     """
@@ -106,7 +157,7 @@ class MessageService():
     def __init__(self):
         self.service = get_service()
 
-    def list_messages(self, maxResults: int = 100, labelIds: list | None = None) -> list[MessageInfo]:
+    def list_messages(self, maxResults: int = 10, labelIds: list | None = None) -> list[MessageInfo]:
         """Fetch Messages from Gmail
 
         Args:
@@ -134,7 +185,18 @@ class MessageService():
 
         return [MessageInfo.from_dict(message) for message in result["messages"]]
 
-    def send_message(self, to_: str, subject: str, content: str) -> MessageInfo:
+    def send_message(self, to_: str, subject: str, content: str, addLabels: list[str] | None = None) -> MessageInfo:
+        """Send Message
+
+        Args:
+            to_ (str): email address of reciever
+            subject (str): Subject of mail
+            content (str): Content of mail
+            addLabels (list[str]): list of Label Ids to add
+            
+        Return:
+            MessageInfo: Returns sent message info 
+        """
         message = EmailMessage()
         message.set_content(content)
     
@@ -154,5 +216,16 @@ class MessageService():
             .send(userId="me", body=created_message)
             .execute()
         )
+
+        if addLabels:
+            body = {
+                "addLabelIds": addLabels
+            }
+            sent_message = (
+                get_service().users()
+                .messages()
+                .modify(userId="me", id=sent_message["id"], body=body)
+                .execute()
+            )
     
         return MessageInfo.from_dict(sent_message)
