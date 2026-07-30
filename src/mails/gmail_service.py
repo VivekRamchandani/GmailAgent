@@ -182,10 +182,18 @@ class MessageService():
             .list(**kwargs)
             .execute()
         )
-
+        if not result.get("messages", None):
+            return []
         return [MessageInfo.from_dict(message) for message in result["messages"]]
 
-    def send_message(self, to_: str, subject: str, content: str, addLabels: list[str] | None = None) -> MessageInfo:
+    def send_message(
+        self, 
+        to_: str, 
+        subject: str, 
+        content: str, 
+        addLabels: list[str] | None = None,
+        showInInbox: bool = False
+    ) -> MessageInfo:
         """Send Message
 
         Args:
@@ -193,6 +201,7 @@ class MessageService():
             subject (str): Subject of mail
             content (str): Content of mail
             addLabels (list[str]): list of Label Ids to add
+            showInInbox (bool): show message in inbox
             
         Return:
             MessageInfo: Returns sent message info 
@@ -217,14 +226,19 @@ class MessageService():
             .execute()
         )
 
+        # Modify Message
+        modify = {}
+
         if addLabels:
-            body = {
-                "addLabelIds": addLabels
-            }
+            modify["addLabelIds"] = addLabels
+        if not showInInbox:
+            modify["removeLabelIds"] = ["INBOX"]
+        
+        if modify:
             sent_message = (
                 get_service().users()
                 .messages()
-                .modify(userId="me", id=sent_message["id"], body=body)
+                .modify(userId="me", id=sent_message["id"], body=modify)
                 .execute()
             )
     

@@ -29,6 +29,9 @@ class MessageInfo():
 
         return Message.from_dict(msg)
 
+    def __str__(self) -> str:
+        return f"threadId: {self.threadId}\nmessageId: {self.id}"
+
 class Draft():
     """This class represents a Draft in Gmail"""
 
@@ -39,6 +42,9 @@ class Draft():
     @staticmethod
     def from_dict(obj: dict):
         return Draft(obj["id"], MessageInfo.from_dict(obj["message"]))
+
+    def __str__(self) -> str:
+        return f"draftId: {self.id}\n{self.messageInfo}"
 
 
 class Message():
@@ -79,6 +85,19 @@ class Message():
 
         data = result["data"]
         return base64.urlsafe_b64decode(data)
+
+    def __str__(self) -> str:
+        string = f"""
+From: {self.payload.from_}
+To: {self.payload.to_}
+---
+Subject: {self.payload.subject}
+---
+
+{self.get_content()}
+
+"""
+        return string
 
     @staticmethod
     def from_dict(obj: dict):
@@ -140,7 +159,6 @@ class Message():
                         }
                         self.attachments.append(attachment)
                     elif part["mimeType"] == "text/plain":
-                        print(part)
                         self.content = part["body"]["data"]
                         rawPart["body"] = part["body"]                  
 
