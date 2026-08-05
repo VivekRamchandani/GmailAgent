@@ -7,7 +7,8 @@ from . import get_service
 from .messages import Draft, MessageInfo
 
 import base64
-import json
+from pathlib import Path
+import mimetypes
 
 from typing import Literal
 
@@ -190,8 +191,9 @@ class MessageService():
         self, 
         to_: str, 
         subject: str, 
-        content: str, 
-        addLabels: list[str] | None = None,
+        content: str,
+        attachments: list[str] = [],
+        addLabels: list[str] = [],
         showInInbox: bool = False
     ) -> MessageInfo:
         """Send Message
@@ -200,6 +202,7 @@ class MessageService():
             to_ (str): email address of reciever
             subject (str): Subject of mail
             content (str): Content of mail
+            attachments (list[str]): List of path to files you want to attach to the mail.
             addLabels (list[str]): list of Label Ids to add
             showInInbox (bool): show message in inbox
             
@@ -212,7 +215,33 @@ class MessageService():
         message["To"] = to_
         message["From"] = "me"
         message["Subject"] = subject
-    
+
+        # Attachment Limit set to 18 MB
+        # 'cause base64 encoding has 33% overhead
+        attachmentLimit = 18874368
+
+        # Adding Attachments
+        if attachments:
+            for attachment in attachments:
+                filepath = Path(attachment)
+                if not filepath.exists():
+                    return
+
+                filesize = filepath.stat().st_size
+                attachmentLimit -= filesize
+
+                if attachmentLimit < 0:
+                    return
+
+                with open(filepath, "rb") as file:
+                    filename = filepath.name
+                    file_content = file.read()
+                    type_subtype, _ = mimetypes.guess_type(filepath)
+                    if not type_subtype:
+                        type_subtype = "application/octet-stream"
+                    main_type, sub_type = type_subtype.split("/")
+
+                message.add_attachment(file_content, main_type, sub_type, filename=filename)
     
         # Encode message 
         encoded_messsage = base64.urlsafe_b64encode(message.as_bytes()).decode()
@@ -220,7 +249,7 @@ class MessageService():
         created_message = {"raw": encoded_messsage}
     
         sent_message = (
-            get_service().users()
+            self.service.users()
             .messages()
             .send(userId="me", body=created_message)
             .execute()
@@ -236,7 +265,7 @@ class MessageService():
         
         if modify:
             sent_message = (
-                get_service().users()
+                self.service.users()
                 .messages()
                 .modify(userId="me", id=sent_message["id"], body=modify)
                 .execute()
