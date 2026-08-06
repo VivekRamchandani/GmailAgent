@@ -194,6 +194,8 @@ class MessageService():
         content: str,
         attachments: list[str] = [],
         addLabels: list[str] = [],
+        addHeaders: dict[str, str] = {},
+        threadId: str | None = None, 
         showInInbox: bool = False
     ) -> MessageInfo:
         """Send Message
@@ -204,6 +206,8 @@ class MessageService():
             content (str): Content of mail
             attachments (list[str]): List of path to files you want to attach to the mail.
             addLabels (list[str]): list of Label Ids to add
+            addHeaders (dict[str, str]): add headers to email message
+            threadId (str | None): send message to a particular thread
             showInInbox (bool): show message in inbox
             
         Return:
@@ -225,13 +229,13 @@ class MessageService():
             for attachment in attachments:
                 filepath = Path(attachment)
                 if not filepath.exists():
-                    return
+                    return                  # TODO: Need to raise error here
 
                 filesize = filepath.stat().st_size
                 attachmentLimit -= filesize
 
                 if attachmentLimit < 0:
-                    return
+                    return                  # TODO: Need to raise error here
 
                 with open(filepath, "rb") as file:
                     filename = filepath.name
@@ -242,11 +246,19 @@ class MessageService():
                     main_type, sub_type = type_subtype.split("/")
 
                 message.add_attachment(file_content, main_type, sub_type, filename=filename)
+
+        # Adding Headers
+        if addHeaders:
+            for header, value in addHeaders:
+                message.add_header(header, value)
     
         # Encode message 
         encoded_messsage = base64.urlsafe_b64encode(message.as_bytes()).decode()
     
         created_message = {"raw": encoded_messsage}
+
+        if threadId:
+            created_message["threadId"] = threadId
     
         sent_message = (
             self.service.users()
@@ -256,6 +268,7 @@ class MessageService():
         )
 
         # Modify Message
+        # TODO: Instead of this add a modify method to the class and call it here 
         modify = {}
 
         if addLabels:
@@ -272,3 +285,38 @@ class MessageService():
             )
     
         return MessageInfo.from_dict(sent_message)
+
+    def reply_to(self, messageId: str, content: str, attachments: list[str] = []) -> MessageInfo:
+        """Reply to an Email Message
+        
+        Args:
+            messageId (str): messageId of email message you want to reply to.
+            content (str): Content of the email
+
+        Return
+            MessageInfo: info of sent message
+        """
+
+        msg = MessageInfo(messageId, "")
+
+        try:
+            message = msg.get_full_message()
+        except:
+            return
+
+        references = message.payload.rawHeaders.get("References", "")
+        in_reply_to = message.payload.rawHeaders["Message-ID"]
+        if references:
+            references += " "
+        references += in_reply_to
+    
+        to_ = message.payload.from_
+        subject = message.payload.subject
+        threadId = message.threadId
+
+        headers = {
+            "References": references,
+            "In-Reply-To": in_reply_to
+        }
+
+        return self.send_message(to_, subject, content, attachments, threadId=threadId, addHeaders=headers)

@@ -4,13 +4,13 @@ import base64
 class MessageInfo():
     """This class represnts message basic info of Gmail Message"""
     
-    def __init__(self, messageId, threadId):
+    def __init__(self, messageId: str, threadId: str):
         self.id = messageId
         self.threadId = threadId
 
     @staticmethod
     def from_dict(obj: dict):
-        return MessageInfo(obj["id"], obj["threadId"])
+        return MessageInfo(obj["id"], obj.get("threadId", ""))
     
     def get_full_message(self):
         """Fetch full message content
