@@ -22,10 +22,19 @@ def __get_creds():
         scopes_match = creds.has_scopes(SCOPES)
     # If there are no (valid) credentials available, let the user login.
     if not creds or not creds.valid or not scopes_match:
-        # If creds expired refresh creds if we have refresh_token
+
+        generate_token = True
+        # Generate new token, but
+        # If creds expired, refresh creds if we have refresh_token
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+                # If cred refresh is successful then don't generate new token
+                generate_token = False
+            except:
+                pass
+                
+        if generate_token:
             flow = InstalledAppFlow.from_client_secrets_file("creds/credentials.json", SCOPES)
             # Generate token    
             creds = flow.run_local_server(port=0)
