@@ -25,12 +25,32 @@ Following features are provided in `MessageService()` class:
     to = "xyz@gmail.com"
     subject = "Automated Mail"
     content = "This is an automated mail"
-    sent_msg = message_service.send_message(to, subject, content)
+    attachments = ["path/to/image.jpg", "path/to/document.md"]
+    sent_msg = message_service.send_message(to, subject, content, attachments)
 
     print(sent_msg.get_full_message())
     ```
     The `send_message()` only returns the message info (`MessageInfo` object) of the sent message. To see the full message just call `get_full_message()` of `MessageInfo` object to get the full message (`Message` object)
 
+3. Replying to a Message
+    
+    ```python
+    content = "Reply to your message."
+    messageId = "xyz123"
+    reply_message = message_service.reply_to(messageId, content)
+    ```
+
+4. Modifying Message
+
+    ```python
+    addLabels = ["Label_1"]
+    removeLabels = ["INBOX"]
+    messageId = "xyz123"
+
+    modified_message = message_service.modify_message(messageId, addLabels, removeLabels)
+    ```
+
+    The above code removes the email from your inbox and adds it under the label `Label_1`.
 
 ### Managing Labels
 

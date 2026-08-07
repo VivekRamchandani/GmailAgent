@@ -1,6 +1,3 @@
-import os.path
-
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import Resource
 from email.message import EmailMessage
 from . import get_service
@@ -210,8 +207,12 @@ class MessageService():
             threadId (str | None): send message to a particular thread
             showInInbox (bool): show message in inbox
             
-        Return:
-            MessageInfo: Returns sent message info 
+        Returns:
+            MessageInfo: Returns sent message info
+
+        Raises:
+            FileNotFoundError: If incorrect attachment path is passed
+            Execption: When maximum total attachment size is execeeded
         """
         message = EmailMessage()
         message.set_content(content)
@@ -229,13 +230,13 @@ class MessageService():
             for attachment in attachments:
                 filepath = Path(attachment)
                 if not filepath.exists():
-                    return                  # TODO: Need to raise error here
+                    raise FileNotFoundError(f"{filepath} doesn't exists.")                  # TODO: Need to raise error here
 
                 filesize = filepath.stat().st_size
                 attachmentLimit -= filesize
 
                 if attachmentLimit < 0:
-                    return                  # TODO: Need to raise error here
+                    raise Exception("Attachment Limit of 18 MB exceeded.")                  # TODO: Need to raise error here
 
                 with open(filepath, "rb") as file:
                     filename = filepath.name
@@ -268,21 +269,16 @@ class MessageService():
         )
 
         # Modify Message
-        # TODO: Instead of this add a modify method to the class and call it here 
         modify = {}
 
         if addLabels:
-            modify["addLabelIds"] = addLabels
+            modify["addLabels"] = addLabels
         if not showInInbox:
-            modify["removeLabelIds"] = ["INBOX"]
+            modify["removeLabels"] = ["INBOX"]
         
         if modify:
-            sent_message = (
-                self.service.users()
-                .messages()
-                .modify(userId="me", id=sent_message["id"], body=modify)
-                .execute()
-            )
+            modify["messageId"] = sent_message["id"]
+            return self.modify_message(**modify)
     
         return MessageInfo.from_dict(sent_message)
 
@@ -293,8 +289,11 @@ class MessageService():
             messageId (str): messageId of email message you want to reply to.
             content (str): Content of the email
 
-        Return
+        Returns:
             MessageInfo: info of sent message
+
+        Raises:
+            Execption: Message id doesn't exists
         """
 
         msg = MessageInfo(messageId, "")
@@ -302,7 +301,7 @@ class MessageService():
         try:
             message = msg.get_full_message()
         except:
-            return
+            raise Exception(f"message id '{msg.id}' doesn't exists.")
 
         references = message.payload.rawHeaders.get("References", "")
         in_reply_to = message.payload.rawHeaders["Message-ID"]
@@ -320,3 +319,32 @@ class MessageService():
         }
 
         return self.send_message(to_, subject, content, attachments, threadId=threadId, addHeaders=headers)
+
+    def modify_message(self, messageId: str, addLabels: list[str], removeLabels: list[str]) -> MessageInfo:
+        """Modify Email
+        
+        Args:
+            messageId (str): message Id
+            addLabels (list[str]): labels to add to the email
+            removeLabels (list[str]): labels to remove from email
+        
+        Returns:
+            MessageInfo: Returns sent message info
+        """
+
+        modify = {}
+        
+        if addLabels:
+            modify["addLabelIds"] = addLabels
+        if removeLabels:
+            modify["removeLabelIds"] = removeLabels
+        
+        if modify:
+            sent_message = (
+                self.service.users()
+                .messages()
+                .modify(userId="me", id=messageId, body=modify)
+                .execute()
+            )
+
+        return MessageInfo.from_dict(sent_message)
