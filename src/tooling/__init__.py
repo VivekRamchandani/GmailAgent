@@ -76,8 +76,12 @@ def func_tool(func):
     def wrapper(*args, **kwargs):
         # TODO: Add call information to the result for LLM
         result = func(*args, **kwargs)
+        # TODO: Add error information if function call fails
         return result
 
     wrapper.schema = schema
 
     return wrapper
+
+
+# TODO: Create decorator for converting class methods in tools
