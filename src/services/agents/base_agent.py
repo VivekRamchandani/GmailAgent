@@ -62,7 +62,7 @@ class BaseAgent(ABC):
 
         try: 
 
-            reponse = self._retry_wrapper()(self._execute_agent)(state)
+            response = self._retry_wrapper()(self._execute_agent)(state)
 
             response.latency_ms = round((time.perf_counter() - start_time) * 1000 , 2)
 
